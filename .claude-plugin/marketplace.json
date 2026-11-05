@@ -1,0 +1,8 @@
+{
+  "name": "orange-buddy",
+  "owner": { "name": "orange-buddy authors" },
+  "plugins": [
+    { "name": "orange-buddy-click", "source": "./orange-buddy-click", "description": "Orange companion with mouse and keyboard interactions" },
+    { "name": "orange-buddy-calm", "source": "./orange-buddy-calm", "description": "Calm orange companion without click animations" }
+  ]
+}

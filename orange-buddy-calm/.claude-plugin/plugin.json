@@ -1,0 +1,1 @@
+{ "name": "orange-buddy-calm", "version": "0.1.0", "description": "A calm orange companion above the prompt that wanders, blinks and reacts to Claude; no click animations", "license": "MIT", "types": "./types/index.d.ts" }
