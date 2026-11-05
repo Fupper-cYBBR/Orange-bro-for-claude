@@ -1,6 +1,7 @@
 import type { ClientModule } from 'claude-code'
 
-type Props = { mood: 'idle' | 'thinking' | 'tool' | 'done'; tool: string; seq: number; isWorking: boolean }
+type Lang = 'en' | 'uk'
+type Props = { mood: 'idle' | 'thinking' | 'tool' | 'done'; tool: string; seq: number; isWorking: boolean; lang?: Lang }
 
 type State = {
   tick: number
@@ -50,17 +51,41 @@ const LAPTOP_A = [' SSSS ', ' SgSS ', 'KKKKKK']
 const LAPTOP_B = [' SSSS ', ' SSgS ', 'KKKKKK']
 const LAPTOP_C = [' SgSS ', ' SSSS ', 'KKKKKK']
 
-const IDLE_LINES = ['♪', '☕', 'хм…', 'тут затишно', '✿', 'біп-буп', '…', '★']
-const DONE_LINES = ['готово!', 'ура ✦', 'зроблено', '✓']
+// Everything he says: English by default, Ukrainian after `/buddy uk`.
+type Lines = {
+  idle: string[]
+  done: string[]
+  tool: { read: string; edit: string; shell: string; search: string; web: string; agent: string; other: string }
+  thinking: string
+}
+
+const TEXT: Record<Lang, Lines> = {
+  en: {
+    idle: ['♪', '☕', 'hmm…', 'cozy here', '✿', 'beep-boop', '…', '★'],
+    done: ['done!', 'yay ✦', 'all set', '✓'],
+    tool: { read: 'reading a file 📖', edit: 'writing ✎', shell: 'tap-tap ⌨', search: 'searching 🔍', web: 'peeking at the web 🌐', agent: 'calling friends', other: 'working…' },
+    thinking: 'thinking',
+  },
+  uk: {
+    idle: ['♪', '☕', 'хм…', 'тут затишно', '✿', 'біп-буп', '…', '★'],
+    done: ['готово!', 'ура ✦', 'зроблено', '✓'],
+    tool: { read: 'гортаю файл 📖', edit: 'пишу ✎', shell: 'тиць-тиць ⌨', search: 'шукаю 🔍', web: 'визираю в мережу 🌐', agent: 'кличу друзів', other: 'працюю…' },
+    thinking: 'думаю',
+  },
+}
+
+// The language of the latest props (kept up to date on every draw).
+const say = (): Lines => TEXT[latest.lang === 'uk' ? 'uk' : 'en']
 
 function toolLine(tool: string): string {
-  if (tool === 'Read') return 'гортаю файл 📖'
-  if (tool === 'Edit' || tool === 'Write' || tool === 'NotebookEdit') return 'пишу ✎'
-  if (tool === 'Bash' || tool === 'PowerShell') return 'тиць-тиць ⌨'
-  if (tool === 'Grep' || tool === 'Glob') return 'шукаю 🔍'
-  if (tool.startsWith('WebFetch') || tool.startsWith('WebSearch') || tool.includes('Browser')) return 'визираю в мережу 🌐'
-  if (tool === 'Agent') return 'кличу друзів'
-  return 'працюю…'
+  const t = say().tool
+  if (tool === 'Read') return t.read
+  if (tool === 'Edit' || tool === 'Write' || tool === 'NotebookEdit') return t.edit
+  if (tool === 'Bash' || tool === 'PowerShell') return t.shell
+  if (tool === 'Grep' || tool === 'Glob') return t.search
+  if (tool.startsWith('WebFetch') || tool.startsWith('WebSearch') || tool.includes('Browser')) return t.web
+  if (tool === 'Agent') return t.agent
+  return t.other
 }
 
 function pick<T>(list: readonly T[], n: number): T {
@@ -72,7 +97,7 @@ function isBusy(p: Props): boolean {
 }
 
 // Only the tick changes the state; the latest props are kept here for it.
-let latest: Props = { mood: 'idle', tool: '', seq: 0, isWorking: false }
+let latest: Props = { mood: 'idle', tool: '', seq: 0, isWorking: false, lang: 'en' }
 
 const Buddy: ClientModule<Props, State> = (props, surface) => {
   latest = props
@@ -111,7 +136,7 @@ const Buddy: ClientModule<Props, State> = (props, surface) => {
   let bubble = ''
   if (asleep) bubble = pick(['z', 'z z', 'z z z'], Math.floor(s.tick / 3))
   else if (props.mood === 'tool') bubble = toolLine(props.tool)
-  else if (busy) bubble = 'думаю' + '.'.repeat(1 + (s.tick % 3))
+  else if (busy) bubble = say().thinking + '.'.repeat(1 + (s.tick % 3))
   else if (s.tick < s.sayUntil) bubble = s.say
 
   const row = (pattern: string, key: string, extra?: string) => {
@@ -162,7 +187,7 @@ function step(s: State, p: Props, columns: number): State {
     next.lastChange = tick
     if (p.mood === 'done') {
       next.doneUntil = tick + 6
-      next.say = pick(DONE_LINES, tick)
+      next.say = pick(say().done, tick)
       next.sayUntil = tick + 12
     }
   }
@@ -183,7 +208,7 @@ function step(s: State, p: Props, columns: number): State {
     }
     // A quiet remark, rarely.
     if (tick >= s.sayUntil && (tick * 11) % 97 === 0) {
-      next.say = pick(IDLE_LINES, tick)
+      next.say = pick(say().idle, tick)
       next.sayUntil = tick + 10
     }
   } else if (next.x > maxX) {

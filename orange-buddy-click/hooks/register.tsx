@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import type { BuddyMood } from '../types'
+import type { BuddyMood, BuddyLang } from '../types'
 
 const mood = atom({ plugin: 'orange-buddy-click', key: 'mood' } as const, {
   mood: 'idle',
@@ -9,6 +9,13 @@ const mood = atom({ plugin: 'orange-buddy-click', key: 'mood' } as const, {
   seq: 0,
 } as BuddyMood)
 const isHidden = atom({ plugin: 'orange-buddy-click', key: 'isHidden' } as const, false)
+// What he speaks: English by default; `/buddy uk` switches to Ukrainian, kept across sessions.
+const lang = atom({ plugin: 'orange-buddy-click', key: 'lang' } as const, 'en' as BuddyLang)
+
+const LANG_ARGS: Record<string, BuddyLang> = {
+  en: 'en', eng: 'en', english: 'en',
+  uk: 'uk', ua: 'uk', ukr: 'uk', ukrainian: 'uk', 'укр': 'uk', 'українська': 'uk',
+}
 
 const setMood = (
   $: Parameters<typeof update>[0],
@@ -19,16 +26,34 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'buddy',
-      description: 'Show or hide the orange companion above the prompt',
+      description: 'Show or hide the orange companion; /buddy en or /buddy uk sets its language',
     })
+    const saved = await $.store.get('lang').catch(() => undefined)
+    if (saved === 'en' || saved === 'uk') {
+      await update($, lang, () => saved).catch(() => undefined)
+    }
 
     return next(e)
   })
 
-  on('command.run', { command: 'buddy' }, async $ => {
-    const hidden = await update($, isHidden, was => !was)
+  on('command.run', { command: 'buddy' }, async ($, e) => {
+    const arg = e.args.trim().toLowerCase()
+    if (arg) {
+      const next = LANG_ARGS[arg]
+      if (!next) {
+        return { text: 'Usage: /buddy (show or hide), /buddy en (English), /buddy uk (українська)' }
+      }
+      await update($, lang, () => next)
+      await $.store.set('lang', next).catch(() => undefined)
+      return { text: next === 'uk' ? 'Помаранчик тепер говорить українською 🇺🇦' : 'Orange Buddy now speaks English' }
+    }
 
-    return { text: hidden ? 'Помаранчик пішов подрімати. /buddy — покликати.' : 'Помаранчик повернувся! Тицяй на нього мишкою 🖱' }
+    const hidden = await update($, isHidden, was => !was)
+    const uk = (await read($, lang)) === 'uk'
+    if (hidden) {
+      return { text: uk ? 'Помаранчик пішов подрімати. /buddy — покликати.' : 'Orange Buddy went for a nap. /buddy calls it back.' }
+    }
+    return { text: uk ? 'Помаранчик повернувся! Тицяй на нього мишкою 🖱' : 'Orange Buddy is back! Poke it with the mouse 🖱' }
   })
 
   on('prompt.submit', async ($, e, next) => {
@@ -67,7 +92,7 @@ export const register: Register = on => {
       <Client
         key="buddy"
         module="./buddy.tsx"
-        props={{ ...m, isWorking: e.props.isWorking }}
+        props={{ ...m, isWorking: e.props.isWorking, lang: await read($, lang) }}
         width="100%"
         height={4}
       />

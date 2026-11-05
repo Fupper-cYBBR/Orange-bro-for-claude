@@ -1,5 +1,7 @@
 # Orange Buddy 🟠
 
+**English** · [Українська](README.uk.md)
+
 A small orange pixel companion that lives above the Claude Code prompt. It wanders around, blinks, pulls out a laptop while Claude is working, says what tool is running and celebrates with confetti when the turn is done.
 
 Two versions are in this repository. Install one of them (both use the `/buddy` command):
@@ -10,6 +12,16 @@ Two versions are in this repository. Install one of them (both use the `/buddy` 
 | `orange-buddy-calm` | A calm version with no click or keyboard animations: it just wanders, blinks and reacts to Claude's work. |
 
 `/buddy` hides or shows the companion.
+
+## Language
+
+The buddy speaks English by default. It also speaks Ukrainian, its original language:
+
+```
+/buddy uk
+```
+
+`/buddy en` switches back. The choice is remembered between sessions.
 
 ## Install
 

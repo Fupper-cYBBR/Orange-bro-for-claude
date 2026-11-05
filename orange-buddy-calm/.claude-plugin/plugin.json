@@ -1,1 +1,1 @@
-{ "name": "orange-buddy-calm", "version": "0.1.0", "description": "A calm orange companion above the prompt that wanders, blinks and reacts to Claude; no click animations", "license": "MIT", "types": "./types/index.d.ts" }
+{ "name": "orange-buddy-calm", "version": "0.2.0", "description": "A calm orange companion above the prompt that wanders, blinks and reacts to Claude; speaks English or Ukrainian; no click animations", "license": "MIT", "types": "./types/index.d.ts" }

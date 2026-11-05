@@ -1,6 +1,7 @@
 import type { ClientModule, ClientPointerEvent, ClientKeyEvent } from 'claude-code'
 
-type Props = { mood: 'idle' | 'thinking' | 'tool' | 'done'; tool: string; seq: number; isWorking: boolean }
+type Lang = 'en' | 'uk'
+type Props = { mood: 'idle' | 'thinking' | 'tool' | 'done'; tool: string; seq: number; isWorking: boolean; lang?: Lang }
 
 type Act =
   | 'none' | 'jump' | 'hearts' | 'spin' | 'squish' | 'wave' | 'dizzy'
@@ -84,35 +85,98 @@ const LAPTOP_A = [' SSSS ', ' SgSS ', 'KKKKKK']
 const LAPTOP_B = [' SSSS ', ' SSgS ', 'KKKKKK']
 const LAPTOP_C = [' SgSS ', ' SSSS ', 'KKKKKK']
 
-const IDLE_LINES = ['♪', '☕', 'хм…', 'тут затишно', '✿', 'біп-буп', '…', '★', 'тицьни мене', 'нудненько']
-const DONE_LINES = ['готово!', 'ура ✦', 'зроблено', '✓']
+// Everything he says: English by default, Ukrainian after `/buddy uk`.
+type Lines = {
+  idle: string[]
+  done: string[]
+  tool: { read: string; edit: string; shell: string; search: string; web: string; agent: string; other: string }
+  thinking: string
+  act: Partial<Record<Act, string[]>>
+  grumble: string[]
+  wake: string
+  tooMany: string
+  whatsThere: string
+  greet: string[]
+  putDown: string
+  hop: string
+  yawn: string
+  tralala: string
+}
+
+const TEXT: Record<Lang, Lines> = {
+  en: {
+    idle: ['♪', '☕', 'hmm…', 'cozy here', '✿', 'beep-boop', '…', '★', 'poke me', 'so bored'],
+    done: ['done!', 'yay ✦', 'all set', '✓'],
+    tool: { read: 'reading a file 📖', edit: 'writing ✎', shell: 'tap-tap ⌨', search: 'searching 🔍', web: 'peeking at the web 🌐', agent: 'calling friends', other: 'working…' },
+    thinking: 'thinking',
+    act: {
+      jump: ['hop!', 'oh!', 'eek!'],
+      hearts: ['hee-hee ♥', 'purr~', 'more!'],
+      spin: ['wheee!', 'spinning!'],
+      squish: ['pfff', 'squishy!'],
+      wave: ['hi!', 'hey!'],
+      dance: ['♪ tss-tss ♪', 'disco!'],
+      stretch: ['a-a-ah~', 'huh? what?'],
+      land: ['oop!', 'landed'],
+      found: ['found it ✦', 'there it is!'],
+    },
+    grumble: ['enough!', 'ow-ow', '💢'],
+    wake: 'huh? what? 😳',
+    tooMany: 'stop poking! 💢',
+    whatsThere: 'ooh, what’s that?',
+    greet: ['purr?', 'anyone there?', '👀'],
+    putDown: 'hey, put me down!',
+    hop: 'hop',
+    yawn: 'a-a-ah~',
+    tralala: 'tra-la-la',
+  },
+  uk: {
+    idle: ['♪', '☕', 'хм…', 'тут затишно', '✿', 'біп-буп', '…', '★', 'тицьни мене', 'нудненько'],
+    done: ['готово!', 'ура ✦', 'зроблено', '✓'],
+    tool: { read: 'гортаю файл 📖', edit: 'пишу ✎', shell: 'тиць-тиць ⌨', search: 'шукаю 🔍', web: 'визираю в мережу 🌐', agent: 'кличу друзів', other: 'працюю…' },
+    thinking: 'думаю',
+    act: {
+      jump: ['хоп!', 'ой!', 'ай!'],
+      hearts: ['хі-хі ♥', 'мур~', 'ще!'],
+      spin: ['уііі!', 'кручусь!'],
+      squish: ['пфф', 'м’який!'],
+      wave: ['привіт!', 'хей!'],
+      dance: ['♪ тиц-тиц ♪', 'диско!'],
+      stretch: ['а-а-ах~', 'а? що?'],
+      land: ['оп!', 'приземлився'],
+      found: ['знайшов ✦', 'ось воно!'],
+    },
+    grumble: ['ну годі!', 'ай-ай', '💢'],
+    wake: 'а? що? 😳',
+    tooMany: 'досить тицяти! 💢',
+    whatsThere: 'о, що там?',
+    greet: ['мур?', 'хтось тут?', '👀'],
+    putDown: 'ей, постав мене!',
+    hop: 'хоп',
+    yawn: 'а-а-ах~',
+    tralala: 'тра-ля-ля',
+  },
+}
+
+// The language of the latest props (kept up to date on every draw).
+const say = (): Lines => TEXT[latest.lang === 'uk' ? 'uk' : 'en']
 const POKE_ACTS: Act[] = ['jump', 'hearts', 'spin', 'squish', 'jump', 'wave']
 const ACT_LEN: Record<Act, number> = {
   none: 0, jump: 6, hearts: 14, spin: 12, squish: 8, wave: 12, dizzy: 26,
   dance: 20, stretch: 14, land: 4, found: 14,
 }
-const ACT_LINES: Partial<Record<Act, string[]>> = {
-  jump: ['хоп!', 'ой!', 'ай!'],
-  hearts: ['хі-хі ♥', 'мур~', 'ще!'],
-  spin: ['уііі!', 'кручусь!'],
-  squish: ['пфф', 'м’який!'],
-  wave: ['привіт!', 'хей!'],
-  dance: ['♪ тиц-тиц ♪', 'диско!'],
-  stretch: ['а-а-ах~', 'а? що?'],
-  land: ['оп!', 'приземлився'],
-  found: ['знайшов ✦', 'ось воно!'],
-}
 const CONFETTI = ['✦', '★', '•', '✶', '◆']
 const CONFETTI_COLORS = ['#F2C14E', '#7EE787', '#79C0FF', '#F2A0A0', '#D2A8FF']
 
 function toolLine(tool: string): string {
-  if (tool === 'Read') return 'гортаю файл 📖'
-  if (tool === 'Edit' || tool === 'Write' || tool === 'NotebookEdit') return 'пишу ✎'
-  if (tool === 'Bash' || tool === 'PowerShell') return 'тиць-тиць ⌨'
-  if (tool === 'Grep' || tool === 'Glob') return 'шукаю 🔍'
-  if (tool.startsWith('WebFetch') || tool.startsWith('WebSearch') || tool.includes('Browser')) return 'визираю в мережу 🌐'
-  if (tool === 'Agent') return 'кличу друзів'
-  return 'працюю…'
+  const t = say().tool
+  if (tool === 'Read') return t.read
+  if (tool === 'Edit' || tool === 'Write' || tool === 'NotebookEdit') return t.edit
+  if (tool === 'Bash' || tool === 'PowerShell') return t.shell
+  if (tool === 'Grep' || tool === 'Glob') return t.search
+  if (tool.startsWith('WebFetch') || tool.startsWith('WebSearch') || tool.includes('Browser')) return t.web
+  if (tool === 'Agent') return t.agent
+  return t.other
 }
 
 function pick<T>(list: readonly T[], n: number): T {
@@ -147,10 +211,10 @@ function startAct(s: State, act: Act, line?: string): State {
     lastChange: s.tick,
     pauseUntil: Math.max(s.pauseUntil, s.tick + ACT_LEN[act] + 4),
   }
-  const lines = ACT_LINES[act]
-  const say = line ?? (lines ? pick(lines, s.tick + s.pokes) : '')
-  if (say) {
-    next.say = say
+  const lines = say().act[act]
+  const text = line ?? (lines ? pick(lines, s.tick + s.pokes) : '')
+  if (text) {
+    next.say = text
     next.sayUntil = s.tick + Math.max(10, ACT_LEN[act])
   }
   if (act === 'hearts' || act === 'found') next.parts = [...s.parts, ...burst(s, ['♥', '♡', '♥'], ['#F2A0A0', '#E8677A'], 0.35, 12)]
@@ -190,9 +254,9 @@ function poke(s: State): State {
   let next: State = { ...s, clicks, pokes: s.pokes + 1, targetX: -1 }
 
   // While dizzy he ignores more pokes and just grumbles.
-  if (s.act === 'dizzy' && isActive(s)) return { ...s, clicks: [], say: pick(['ну годі!', 'ай-ай', '💢'], s.tick), sayUntil: s.tick + 6 }
-  if (asleep) return startAct(next, 'stretch', 'а? що? 😳')
-  if (clicks.length >= 6) return startAct({ ...next, clicks: [] }, 'dizzy', 'досить тицяти! 💢')
+  if (s.act === 'dizzy' && isActive(s)) return { ...s, clicks: [], say: pick(say().grumble, s.tick), sayUntil: s.tick + 6 }
+  if (asleep) return startAct(next, 'stretch', say().wake)
+  if (clicks.length >= 6) return startAct({ ...next, clicks: [] }, 'dizzy', say().tooMany)
   if (prev !== undefined && s.tick - prev <= 2 && s.act !== 'dance') return startAct(next, 'dance')
   return startAct(next, pick(POKE_ACTS, s.pokes))
 }
@@ -214,7 +278,7 @@ function onPointer(s: State, ev: ClientPointerEvent, columns: number): State {
       parts: [...s.parts.filter(p => !p.marker), marker],
       lastChange: s.tick,
       act: 'none',
-      say: 'о, що там?',
+      say: say().whatsThere,
       sayUntil: s.tick + 10,
     }
   }
@@ -230,7 +294,7 @@ function onPointer(s: State, ev: ClientPointerEvent, columns: number): State {
       ...s,
       lookX: ev.x,
       hover: hit,
-      ...(greet ? { say: pick(['мур?', 'хтось тут?', '👀'], s.tick), sayUntil: s.tick + 8 } : {}),
+      ...(greet ? { say: pick(say().greet, s.tick), sayUntil: s.tick + 8 } : {}),
     }
   }
 
@@ -262,7 +326,7 @@ function onKey(s: State, ev: ClientKeyEvent, columns: number): State {
 }
 
 // Only the tick changes the state; the latest props are kept here for it.
-let latest: Props = { mood: 'idle', tool: '', seq: 0, isWorking: false }
+let latest: Props = { mood: 'idle', tool: '', seq: 0, isWorking: false, lang: 'en' }
 
 type Frame = { rows: [string, string, string]; lift: 0 | 1; shake: number; tint: boolean; bubble?: string }
 
@@ -274,7 +338,7 @@ function frame(s: State, props: Props): Frame {
 
   if (s.drag) {
     const legs = s.tick % 4 < 2 ? LEGS_DANGLE : mirror(LEGS_DANGLE)
-    return { rows: [ARMS_UP, BODY_ARMS_UP, legs], lift: 1, shake: 0, tint: false, bubble: s.drag.moved ? 'ей, постав мене!' : undefined }
+    return { rows: [ARMS_UP, BODY_ARMS_UP, legs], lift: 1, shake: 0, tint: false, bubble: s.drag.moved ? say().putDown : undefined }
   }
 
   if (isActive(s)) {
@@ -380,7 +444,7 @@ const Buddy: ClientModule<Props, State> = (props, surface) => {
   else if (isActive(s) && s.tick < s.sayUntil) bubble = s.say
   else if (asleep) bubble = pick(['z', 'z z', 'z z z'], s.tick / 6)
   else if (props.mood === 'tool') bubble = toolLine(props.tool)
-  else if (busy) bubble = 'думаю' + '.'.repeat(1 + (Math.floor(s.tick / 2) % 3))
+  else if (busy) bubble = say().thinking + '.'.repeat(1 + (Math.floor(s.tick / 2) % 3))
   else if (s.tick < s.sayUntil) bubble = s.say
 
   const paint = (pattern: string) => (f.tint ? pattern.replace(/#/g, 'R') : pattern)
@@ -473,7 +537,7 @@ function step(s: State, p: Props, columns: number): State {
     next.lastChange = tick
     if (p.mood === 'done') {
       next.doneUntil = tick + 12
-      next = startAct(next, 'jump', pick(DONE_LINES, tick))
+      next = startAct(next, 'jump', pick(say().done, tick))
       next.sayUntil = tick + 24
       next.parts = [...next.parts, ...confetti(next, columns)]
     }
@@ -508,12 +572,12 @@ function step(s: State, p: Props, columns: number): State {
     // Little things he does on his own.
     // (They keep his sleep timer: only the person or Claude wakes him.)
     const quiet = next.lastChange
-    if ((tick * 7) % 263 === 0) next = { ...startAct(next, 'jump', 'хоп'), lastChange: quiet }
-    else if ((tick * 5) % 409 === 0) next = { ...startAct(next, 'stretch', 'а-а-ах~'), lastChange: quiet }
-    else if ((tick * 3) % 521 === 0) next = { ...startAct(next, 'spin', 'тра-ля-ля'), lastChange: quiet }
+    if ((tick * 7) % 263 === 0) next = { ...startAct(next, 'jump', say().hop), lastChange: quiet }
+    else if ((tick * 5) % 409 === 0) next = { ...startAct(next, 'stretch', say().yawn), lastChange: quiet }
+    else if ((tick * 3) % 521 === 0) next = { ...startAct(next, 'spin', say().tralala), lastChange: quiet }
     else if (tick >= s.sayUntil && (tick * 11) % 197 === 0) {
       // A quiet remark, rarely.
-      next.say = pick(IDLE_LINES, tick)
+      next.say = pick(say().idle, tick)
       next.sayUntil = tick + 20
     }
   } else if (next.x > maxX) {
